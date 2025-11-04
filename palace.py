@@ -391,24 +391,24 @@ class UnderHand():
             card = random.choice(deck.current)
             self.cards.append(card)
             deck.current.remove(card)
-
         self.pos = pos
 
-        self.shake_active = False
-        self.shake_duration = 0
-        self.shake_intensity = 5
-    
+    def start_card_shake(self, card, duration_frames, intensity):
+        card.shake_active = True
+        card.shake_duration = duration_frames
+        card.shake_intensity = intensity
+
     def draw_underhand(self, screen):
         x, y = self.pos
         index = 0
         for card in self.cards:
             offset_x, offset_y = 0, 0
-            if self.shake_active and self.shake_duration > 0:
-                offset_x = random.randint(-self.shake_intensity, self.shake_intensity)
-                offset_y = random.randint(-self.shake_intensity, self.shake_intensity)
-                self.shake_duration -= 1
-                if self.shake_duration <= 0:
-                    self.shake_active = False
+            if hasattr(card, 'shake_active') and card.shake_active and card.shake_duration > 0:
+                offset_x = random.randint(-card.shake_intensity, card.shake_intensity)
+                offset_y = random.randint(-card.shake_intensity, card.shake_intensity)
+                card.shake_duration -= 1
+                if card.shake_duration <= 0:
+                    card.shake_active = False
 
             rotated_surface = pygame.transform.rotate(card.back_surface, 0)
             screen.blit(rotated_surface, (x + offset_x + index, y + offset_y))
@@ -506,7 +506,7 @@ while running:
             elif event.key == PLAY:
                 match evaluate_hand(player_hand.selections, discard_pile):
                     case 0:
-                        player_hand.start_shake(7, 10)
+                        player_hand.start_shake(7, 12)
                     case 1:
                         player_hand.play_cards(discard_pile)
                     case 2:
@@ -549,7 +549,7 @@ while running:
                     tick = 0
                     for card in player_hand.hand:
                         if evaluate_hand([card], discard_pile) > 0:
-                            discard_pile.start_shake(7, 10)
+                            discard_pile.start_shake(7, 12)
                             break
                         if tick == length - 1:
                             for card in discard_pile.cards:
@@ -559,6 +559,12 @@ while running:
                             discard_pile.rotations = []
                             discard_pile.rot_cards = []
                         tick += 1
+            for idx, card in enumerate(underhand.cards):
+                card_x = underhand.pos[0] + idx * 150
+                card_y = underhand.pos[1]
+                rect = card.back_surface.get_rect(topleft=(card_x, card_y))
+                if rect.collidepoint(event.pos):
+                    underhand.start_card_shake(card, 7, 12)
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             for button in button_manager.buttons:
                 button.down = False
