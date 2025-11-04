@@ -129,7 +129,6 @@ def clamp(min: int, max: int, num: int):
     
 class Player():
     def __init__(self, min_hand_size):
-        global deck
         self.hand = []
         self.min_hand_size = min_hand_size
         self.shake_active = False
@@ -149,7 +148,7 @@ class Player():
             self.undershake = True
 
     def draw_hand(self, screen):
-        anchor = (700, 700)
+        anchor = (700, 725)
         card_w = 144
         max_len = 810
 
@@ -385,6 +384,36 @@ class Deck():
         self.hand.remove(card)
         self.discards.append(card) 
 
+class UnderHand():
+    def __init__(self, deck: Deck, pos: tuple = (0, 0)):
+        self.cards = []
+        for _ in range(3):
+            card = random.choice(deck.current)
+            self.cards.append(card)
+            deck.current.remove(card)
+
+        self.pos = pos
+
+        self.shake_active = False
+        self.shake_duration = 0
+        self.shake_intensity = 5
+    
+    def draw_underhand(self, screen):
+        x, y = self.pos
+        index = 0
+        for card in self.cards:
+            offset_x, offset_y = 0, 0
+            if self.shake_active and self.shake_duration > 0:
+                offset_x = random.randint(-self.shake_intensity, self.shake_intensity)
+                offset_y = random.randint(-self.shake_intensity, self.shake_intensity)
+                self.shake_duration -= 1
+                if self.shake_duration <= 0:
+                    self.shake_active = False
+
+            rotated_surface = pygame.transform.rotate(card.back_surface, 90)
+            screen.blit(rotated_surface, (x, y + offset_y + index))
+            index += 150
+
 def evaluate_hand(hand: list[Card], discard: DiscardPile) -> int:
     """
     0 - invalid play
@@ -441,6 +470,7 @@ clock = pygame.time.Clock()
 deck = Deck()
 deck.shuffle()
 player = Player(4)
+underhand = UnderHand(deck, (50, 450))
 flipped = False
 
 button_manager = ButtonManager()
@@ -559,6 +589,8 @@ while running:
     burn_pile.draw_pile(game_buffer)
 
     button_manager.draw_buttons(game_buffer)
+
+    underhand.draw_underhand(game_buffer)
 
     offset_x, offset_y = 0, 0
     if shake_active:
