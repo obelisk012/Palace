@@ -488,7 +488,9 @@ mouse_down = False
 
 shake_active = False
 shake_duration = 0
-shake_intensity = 5 # Max offset in pixels
+shake_intensity = 5 
+
+admin_commands = True
 
 def screen_start_shake(duration_frames, intensity):
     global shake_active, shake_duration, shake_intensity
@@ -507,8 +509,9 @@ while running:
             if event.key == pygame.K_ESCAPE:
                 running = False
             # Admin commands start
-            elif event.key == pygame.K_s:
-                deck.get_card(player_hand, len(deck.current))
+            elif admin_commands:
+                if event.key == pygame.K_s:
+                    deck.get_card(player_hand, 1)
             # Admin commands end
             elif event.key == PLAY:
                 match evaluate_hand(player_hand.selections, discard_pile):
