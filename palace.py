@@ -148,7 +148,7 @@ class Player():
             self.undershake = True
 
     def draw_hand(self, screen):
-        anchor = (700, 725)
+        anchor = (475, 725)
         card_w = 144
         max_len = 810
 
@@ -322,7 +322,7 @@ class Deck():
         
         self.current = self.cards
 
-        self.anchor = (1150, 350)
+        self.anchor = (1100, 350)
 
         self.discards = []
 
@@ -410,8 +410,8 @@ class UnderHand():
                 if self.shake_duration <= 0:
                     self.shake_active = False
 
-            rotated_surface = pygame.transform.rotate(card.back_surface, 90)
-            screen.blit(rotated_surface, (x, y + offset_y + index))
+            rotated_surface = pygame.transform.rotate(card.back_surface, 0)
+            screen.blit(rotated_surface, (x + offset_x + index, y + offset_y))
             index += 150
 
 def evaluate_hand(hand: list[Card], discard: DiscardPile) -> int:
@@ -470,7 +470,7 @@ clock = pygame.time.Clock()
 deck = Deck()
 deck.shuffle()
 player = Player(4)
-underhand = UnderHand(deck, (50, 450))
+underhand = UnderHand(deck, (950, 725))
 flipped = False
 
 button_manager = ButtonManager()
