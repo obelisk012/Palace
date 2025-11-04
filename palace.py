@@ -127,7 +127,7 @@ def clamp(min: int, max: int, num: int):
     else:
         return num
     
-class Player():
+class PlayerHand():
     def __init__(self, min_hand_size):
         self.hand = []
         self.min_hand_size = min_hand_size
@@ -291,7 +291,7 @@ class Card():
         else:
             self.flipped = True
 
-    def select(self, player: Player, offset: int = 50):
+    def select(self, player: PlayerHand, offset: int = 50):
         if not self.selected:
             self.selected = True
             self.offset = offset
@@ -372,7 +372,7 @@ class Deck():
         self.current = self.cards
         self.discards = []
     
-    def get_card(self, player: Player = Player(3), n: int = 1):
+    def get_card(self, player: PlayerHand = PlayerHand(4), n: int = 1):
         for _ in range(n):
             card = self.current[0]
 
@@ -469,7 +469,7 @@ clock = pygame.time.Clock()
 # Game Variables
 deck = Deck()
 deck.shuffle()
-player = Player(4)
+player_hand = PlayerHand(4)
 underhand = UnderHand(deck, (950, 725))
 flipped = False
 
@@ -501,18 +501,18 @@ while running:
                 running = False
             # Admin commands start
             elif event.key == pygame.K_s:
-                deck.get_card(player, 1)
+                deck.get_card(player_hand, 1)
             # Admin commands end
             elif event.key == PLAY:
-                match evaluate_hand(player.selections, discard_pile):
+                match evaluate_hand(player_hand.selections, discard_pile):
                     case 0:
-                        player.start_shake(7, 10)
+                        player_hand.start_shake(7, 10)
                     case 1:
-                        player.play_cards(discard_pile)
+                        player_hand.play_cards(discard_pile)
                     case 2:
-                        player.play_cards(discard_pile)
+                        player_hand.play_cards(discard_pile)
                     case 3:
-                        player.play_cards(discard_pile)
+                        player_hand.play_cards(discard_pile)
                         for card in discard_pile.cards:
                             burn_pile.cards.append(card)
                         discard_pile.cards = []
@@ -521,9 +521,9 @@ while running:
                         screen_start_shake(40, 25)
                     case 5:
                         strength = discard_pile.cards[-1].strength if discard_pile.cards else 0
-                        for card in player.selections:
+                        for card in player_hand.selections:
                             card.strength = strength
-                        player.play_cards(discard_pile)
+                        player_hand.play_cards(discard_pile)
                     case _:
                         pass
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -532,7 +532,7 @@ while running:
                     button.down = True
                     button.action()
             selected_card = False
-            for card in list(reversed(player.hand)):
+            for card in list(reversed(player_hand.hand)):
                 if selected_card:
                     break
                 if card.selected:
@@ -540,21 +540,21 @@ while running:
                 else:
                     rect = card.front_surface.get_rect(topleft=(card.x, card.y))
                 if rect.collidepoint(event.pos):
-                    card.select(player, offset=50)
+                    card.select(player_hand, offset=50)
                     selected_card = True
             for card in discard_pile.cards:
                 rect = card.front_surface.get_rect(topleft=(discard_pile.pos[0], discard_pile.pos[1]))
                 if rect.collidepoint(event.pos):
-                    length = len(player.hand)
+                    length = len(player_hand.hand)
                     tick = 0
-                    for card in player.hand:
+                    for card in player_hand.hand:
                         if evaluate_hand([card], discard_pile) > 0:
                             discard_pile.start_shake(7, 10)
                             break
                         if tick == length - 1:
                             for card in discard_pile.cards:
                                 card.selected = False
-                                player.hand.append(card)
+                                player_hand.hand.append(card)
                             discard_pile.cards = []
                             discard_pile.rotations = []
                             discard_pile.rot_cards = []
@@ -564,8 +564,8 @@ while running:
                 button.down = False
 
     try:
-        if len(player.hand) < player.min_hand_size:
-            deck.get_card(player, player.min_hand_size - len(player.hand))
+        if len(player_hand.hand) < player_hand.min_hand_size:
+            deck.get_card(player_hand, player_hand.min_hand_size - len(player_hand.hand))
     except IndexError:
         pass
     
@@ -582,7 +582,7 @@ while running:
 
     deck.draw_deck(game_buffer)
 
-    player.draw_hand(game_buffer)
+    player_hand.draw_hand(game_buffer)
 
     discard_pile.draw_pile(game_buffer)
 
