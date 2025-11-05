@@ -223,14 +223,13 @@ class PlayerHand():
     
     def play_cards(self, anim, discard_pile: DiscardPile):
         cards = []
-        destins = []
         for card in self.selections:
             if card in self.cards:
                 self.cards.remove(card)
                 cards.append(card)
-                destins.append(discard_pile.pos)
         self.selections = []
-        anim.start_move(cards, discard_pile, card.idle_pos, discard_pile.pos, 13)
+
+        anim.start_move(cards, discard_pile, cards[0].idle_pos, discard_pile.pos, 13)
 
 # Card & deck classes
 class Card():
@@ -571,7 +570,7 @@ class AnimationManager():
     def __init__(self):
         self.anim_cards = []
     
-    def start_move(self, cards: list[Card], destination, start_pos: tuple, end_pos: tuple, duration_frames: int):
+    def start_move(self, cards: list[Card], destination, start_pos: tuple, end_pos: tuple, duration_frames: int, task: str = 'move'):
         for card in cards:
             card.idle_pos = start_pos
             info = (start_pos, end_pos, duration_frames, card, destination, 0)
