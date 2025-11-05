@@ -639,7 +639,7 @@ while running:
             if event.key == pygame.K_ESCAPE:
                 running = False
             elif event.key == pygame.K_RETURN:
-                match evaluate_hand(player_hand.selections, discard_pile):
+                match evaluate_hand(player1.hand.selections, discard_pile):
                     case 0:
                         player1.hand.start_shake(7, 12)
                     case 1:
