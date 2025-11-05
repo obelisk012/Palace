@@ -599,7 +599,7 @@ shake_active = False
 shake_duration = 0
 shake_intensity = 5 
 
-admin_commands = True
+admin_commands = False
 
 def screen_start_shake(duration_frames, intensity):
     global shake_active, shake_duration, shake_intensity
@@ -615,6 +615,9 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         if event.type == pygame.KEYDOWN:
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_LSHIFT] and keys[pygame.K_RSHIFT]:
+                admin_commands = not admin_commands
             if event.key == pygame.K_ESCAPE:
                 running = False
             elif event.key == pygame.K_RETURN:
