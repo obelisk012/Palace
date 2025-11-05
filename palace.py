@@ -788,7 +788,7 @@ while running:
     anim_manager.update_move()
 
     try:
-        if len(player1.hand.hand) < player1.hand.min_hand_size:
+        if len(player1.hand.hand) < player1.hand.min_hand_size and len(anim_manager.anim_cards) == 0:
             deck.get_card(player1.hand, player1.hand.min_hand_size - len(player1.hand.hand))
     except IndexError:
         pass
