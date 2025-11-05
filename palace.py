@@ -228,7 +228,7 @@ class PlayerHand():
                 cards.append(card)
                 destins.append(discard_pile.pos)
         self.selections = []
-        anim.start_move(cards, discard_pile, card.idle_pos, discard_pile.pos, 15)
+        anim.start_move(cards, discard_pile, card.idle_pos, discard_pile.pos, 13)
 
 # Card & deck classes
 class Card():
