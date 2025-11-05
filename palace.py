@@ -50,16 +50,16 @@ class DiscardPile():
         for card in self.cards:
                 rect = card.front_surface.get_rect(topleft=(self.pos[0], self.pos[1]))
                 if rect.collidepoint(event.pos):
-                    length = len(player_hand.hand)
+                    length = len(player_hand.cards)
                     tick = 0
-                    for card in player_hand.hand:
+                    for card in player_hand.cards:
                         if evaluate_hand([card], self) > 0:
                             self.start_shake(7, 12)
                             break
                         if tick == length - 1:
                             for card in self.cards:
                                 card.selected = False
-                                player_hand.hand.append(card)
+                                player_hand.cards.append(card)
                             self.cards = []
                             self.rotations = []
                             self.rot_cards = []
@@ -68,7 +68,7 @@ class DiscardPile():
     def pickup(self, player_hand):
         for card in self.cards:
             card.selected = False
-            player_hand.hand.append(card)
+            player_hand.cards.append(card)
         self.cards = []
         self.rotations = []
         self.rot_cards = []
@@ -156,12 +156,14 @@ def clamp(min: int, max: int, num: int):
     
 class PlayerHand():
     def __init__(self, min_hand_size):
-        self.hand = []
+        self.cards = []
         self.min_hand_size = min_hand_size
         self.shake_active = False
         self.shake_duration = 0
         self.shake_intensity = 5
         self.selshake = False
+
+        self.anchor = (475, 725)
 
         self.selections = []
 
@@ -179,7 +181,7 @@ class PlayerHand():
         card_w = 144
         max_len = 810
 
-        n = len(self.hand)
+        n = len(self.cards)
         if n == 0:
             return
 
@@ -193,9 +195,9 @@ class PlayerHand():
         y = anchor[1]
 
         x = start_x
-        length = len(self.hand)
+        length = len(self.cards)
         tick = 0
-        for card in self.hand:
+        for card in self.cards:
             card.x, card.y = x, y
 
             if self.shake_active and self.shake_duration > 0:
@@ -223,8 +225,8 @@ class PlayerHand():
         cards = []
         destins = []
         for card in self.selections:
-            if card in self.hand:
-                self.hand.remove(card)
+            if card in self.cards:
+                self.cards.remove(card)
                 cards.append(card)
                 destins.append(discard_pile.pos)
         self.selections = []
@@ -286,9 +288,13 @@ class Card():
             return offset_x, offset_y
         return 0, 0
 
-    def draw_card(self, screen, pos: tuple = (0, 0)):
+    def draw_card(self, screen, pos: tuple = (0, 0), deck = None):
         if not self.traveling:
             self.idle_pos = pos
+        if deck != None and self in deck.cards:
+            self.idle_pos = deck.anchor
+        if self.idle_pos == (0, 0):
+            return
 
         x, y = self.idle_pos
 
@@ -414,11 +420,13 @@ class Deck():
         self.discards = []
     
     def get_card(self, player: PlayerHand = PlayerHand(4), n: int = 1):
+        cards = []
         for _ in range(n):
             card = self.current[0]
 
             self.current.remove(card)
-            player.hand.append(card)
+            cards.append(card)
+        return cards
 
     def discard(self, index: int = 0):
         card = self.hand[clamp(0, len(self.hand), index)]
@@ -565,25 +573,26 @@ class AnimationManager():
     
     def start_move(self, cards: list[Card], destination, start_pos: tuple, end_pos: tuple, duration_frames: int):
         for card in cards:
+            card.idle_pos = start_pos
             info = (start_pos, end_pos, duration_frames, card, destination, 0)
-            self.anim_cards.append(info)  # Append the info tuple
+            self.anim_cards.append(info)
             card.traveling = True
 
-    def update_move(self):
-        to_remove = []  # List to keep track of cards to remove
+    def update_move(self, deck: Deck = None):
+        to_remove = []
         for info in self.anim_cards:
             start_pos, end_pos, duration_frames, card, destination, tick = info
             
             # Debugging output
             if not hasattr(destination, 'cards'):
                 print(f"Invalid destination: {destination}")
-                continue  # Skip this iteration if destination is invalid
+                continue
 
             if tick >= duration_frames:
                 card.idle_pos = end_pos
                 card.traveling = False
-                to_remove.append(info)  # Mark for removal
-                destination.cards.append(card)  # Append to the valid destination
+                to_remove.append(info)
+                destination.cards.append(card)
                 continue
 
             progress = tick / duration_frames
@@ -602,7 +611,7 @@ class AnimationManager():
     def draw_cards(self, screen):
         for info in self.anim_cards:
             _, _, _, card, _, _ = info
-            card.draw_card(screen)          
+            card.draw_card(screen, card.idle_pos, deck)          
         
 def evaluate_hand(hand: list[Card], discard: DiscardPile) -> int:
     """
@@ -717,6 +726,7 @@ while running:
                     case _:
                         pass
             # Admin commands start
+            '''
             elif admin_commands:
                 # Draw card
                 if event.key == pygame.K_s:
@@ -735,18 +745,19 @@ while running:
                     discard_pile.rot_cards = []
                     screen_start_shake(40, 25)
                 elif event.key == pygame.K_g:
-                    for card in player_hand.hand:
+                    for card in player_hand.cards:
                         burn_pile.cards.append(card)
-                    player_hand.hand = []
+                    player_hand.cards = []
                     screen_start_shake(40, 25)
             # Admin commands end
+            '''
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             for button in button_manager.buttons:
                 if button.is_clicked(event.pos):
                     button.down = True
                     button.action()
             selected_card = False
-            for card in list(reversed(player1.hand.hand)):
+            for card in list(reversed(player1.hand.cards)):
                 if selected_card:
                     break
                 if card.selected:
@@ -761,7 +772,7 @@ while running:
                 card_x, card_y = card.position
                 rect = card.back_surface.get_rect(topleft=(card_x, card_y))
                 if rect.collidepoint(event.pos):
-                    if len(deck.cards) <= 0 and len(player1.overhand.cards) <= 0 and len(player1.hand.hand) <= 0:
+                    if len(deck.cards) <= 0 and len(player1.overhand.cards) <= 0 and len(player1.hand.cards) <= 0:
                         player1.underhand.play_card(card, discard_pile, player1.hand)
                     else:
                         player1.underhand.start_card_shake(card, 7, 12)
@@ -769,7 +780,7 @@ while running:
                 card_x, card_y = card.position
                 rect = card.front_surface.get_rect(topleft=(card_x, card_y))
                 if rect.collidepoint(event.pos):
-                    if len(deck.cards) <= 0 and len(player1.hand.hand) <= 0:
+                    if len(deck.cards) <= 0 and len(player1.hand.cards) <= 0:
                         player1.overhand.play_card(card, discard_pile, player1.hand)
                     else:
                         player1.overhand.start_card_shake(card, 7, 12)
@@ -785,11 +796,12 @@ while running:
         discard_pile.rot_cards = []
         screen_start_shake(40, 25)
     
-    anim_manager.update_move()
+    anim_manager.update_move(deck)
 
     try:
-        if len(player1.hand.hand) < player1.hand.min_hand_size and len(anim_manager.anim_cards) == 0:
-            deck.get_card(player1.hand, player1.hand.min_hand_size - len(player1.hand.hand))
+        if len(player1.hand.cards) < player1.hand.min_hand_size and len(anim_manager.anim_cards) == 0:
+            px, py = player1.hand.anchor
+            anim_manager.start_move(deck.get_card(player1.hand, 1), player1.hand, deck.anchor, (px + 144, py), 13)
     except IndexError:
         pass
     
