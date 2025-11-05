@@ -709,12 +709,6 @@ while running:
                         player1.hand.play_cards(anim_manager, discard_pile)
                     case 3:
                         player1.hand.play_cards(anim_manager, discard_pile)
-                        for card in discard_pile.cards:
-                            burn_pile.cards.append(card)
-                        discard_pile.cards = []
-                        discard_pile.rotations = []
-                        discard_pile.rot_cards = []
-                        screen_start_shake(40, 25)
                     case 5:
                         strength = discard_pile.cards[-1].strength if discard_pile.cards else 0
                         for card in player1.hand.selections:
@@ -746,7 +740,6 @@ while running:
                     player_hand.hand = []
                     screen_start_shake(40, 25)
             # Admin commands end
-        # TODO: implement player 1
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             for button in button_manager.buttons:
                 if button.is_clicked(event.pos):
@@ -783,6 +776,14 @@ while running:
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             for button in button_manager.buttons:
                 button.down = False
+
+    if discard_pile.cards and discard_pile.cards[-1].val == 9 or len(discard_pile.cards) >= 4 and discard_pile.cards[-1].val == discard_pile.cards[-2].val == discard_pile.cards[-3].val == discard_pile.cards[-4].val:
+        for card in discard_pile.cards:
+            burn_pile.cards.append(card)
+        discard_pile.cards = []
+        discard_pile.rotations = []
+        discard_pile.rot_cards = []
+        screen_start_shake(40, 25)
     
     anim_manager.update_move()
 
