@@ -46,6 +46,33 @@ class DiscardPile():
         self.shake_duration = duration_frames
         self.shake_intensity = intensity
 
+    def eval(self, player_hand, event):
+        for card in self.cards:
+                rect = card.front_surface.get_rect(topleft=(self.pos[0], self.pos[1]))
+                if rect.collidepoint(event.pos):
+                    length = len(player_hand.hand)
+                    tick = 0
+                    for card in player_hand.hand:
+                        if evaluate_hand([card], self) > 0:
+                            self.start_shake(7, 12)
+                            break
+                        if tick == length - 1:
+                            for card in self.cards:
+                                card.selected = False
+                                player_hand.hand.append(card)
+                            self.cards = []
+                            self.rotations = []
+                            self.rot_cards = []
+                        tick += 1
+
+    def pickup(self, player_hand):
+        for card in self.cards:
+            card.selected = False
+            player_hand.hand.append(card)
+        self.cards = []
+        self.rotations = []
+        self.rot_cards = []
+
     def draw_pile(self, screen):
         if not self.cards:
             return
@@ -187,6 +214,7 @@ class PlayerHand():
             if card.selected and card.shake_active:
                 offset_x, offset_y = card.update_shake()
 
+            card.flipped = False
             card.draw_card(screen, (x + offset_x, y + offset_y))
             x += spacing
 
@@ -392,7 +420,6 @@ class UnderHand():
         for i in range(3):
             card = random.choice(deck.current)
             deck.current.remove(card)
-            # Assign a static position for this card
             card.position = (x + i * 150, y)
             self.cards.append(card)
 
@@ -415,10 +442,91 @@ class UnderHand():
         card.shake_duration = duration_frames
         card.shake_intensity = intensity
 
-    def play_card(self, card, discard_pile: DiscardPile):
+    def play_card(self, card, discard_pile: DiscardPile, player_hand: PlayerHand):
         if card in self.cards:
-            self.cards.remove(card)
-            discard_pile.cards.append(card)
+            match evaluate_hand([card], discard_pile):
+                case 0:
+                    self.cards.remove(card)
+                    discard_pile.cards.append(card)
+                    discard_pile.pickup(player_hand)         
+                case 1:
+                    self.cards.remove(card)
+                    discard_pile.cards.append(card)
+                case 2:
+                    self.cards.remove(card)
+                    discard_pile.cards.append(card)
+                case 3:
+                    self.cards.remove(card)
+                    discard_pile.cards.append(card)
+                    for card in discard_pile.cards:
+                        burn_pile.cards.append(card)
+                    discard_pile.cards = []
+                    discard_pile.rotations = []
+                    discard_pile.rot_cards = []
+                    screen_start_shake(40, 25)
+                case 5:
+                    self.cards.remove(card)
+                    discard_pile.cards.append(card)
+                    strength = discard_pile.cards[-1].strength if discard_pile.cards else 8
+                    card.strength = strength         
+
+class OverHand():
+    def __init__(self, deck: Deck, pos: tuple = (0, 0)):
+        self.cards = []
+        self.pos = pos
+        x, y = pos
+        for i in range(3):
+            card = random.choice(deck.current)
+            deck.current.remove(card)
+            card.position = (x + i * 150, y)
+            self.cards.append(card)
+
+    def draw_overhand(self, screen):
+        for card in self.cards:
+            offset_x = offset_y = 0
+            if getattr(card, "shake_active", False) and card.shake_duration > 0:
+                offset_x = random.randint(-card.shake_intensity, card.shake_intensity)
+                offset_y = random.randint(-card.shake_intensity, card.shake_intensity)
+                card.shake_duration -= 1
+                if card.shake_duration <= 0:
+                    card.shake_active = False
+
+            card_x, card_y = card.position
+            card.flipped = False
+            card.draw_card(screen, (card_x + offset_x, card_y + offset_y))
+
+    def start_card_shake(self, card, duration_frames, intensity):
+        card.shake_active = True
+        card.shake_duration = duration_frames
+        card.shake_intensity = intensity
+
+    def play_card(self, card, discard_pile: DiscardPile, player_hand: PlayerHand):
+        if card in self.cards:
+            match evaluate_hand([card], discard_pile):
+                case 0:
+                    self.cards.remove(card)
+                    discard_pile.cards.append(card)
+                    discard_pile.pickup(player_hand)         
+                case 1:
+                    self.cards.remove(card)
+                    discard_pile.cards.append(card)
+                case 2:
+                    self.cards.remove(card)
+                    discard_pile.cards.append(card)
+                case 3:
+                    self.cards.remove(card)
+                    discard_pile.cards.append(card)
+                    for card in discard_pile.cards:
+                        burn_pile.cards.append(card)
+                    discard_pile.cards = []
+                    discard_pile.rotations = []
+                    discard_pile.rot_cards = []
+                    screen_start_shake(40, 25)
+                case 5:
+                    self.cards.remove(card)
+                    discard_pile.cards.append(card)
+                    strength = discard_pile.cards[-1].strength if discard_pile.cards else 8
+                    card.strength = strength        
 
 def evaluate_hand(hand: list[Card], discard: DiscardPile) -> int:
     """
@@ -478,6 +586,7 @@ deck = Deck()
 deck.shuffle()
 player_hand = PlayerHand(4)
 underhand = UnderHand(deck, (950, 725))
+overhand = OverHand(deck, (955, 710))
 flipped = False
 
 button_manager = ButtonManager()
@@ -508,12 +617,7 @@ while running:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 running = False
-            # Admin commands start
-            elif admin_commands:
-                if event.key == pygame.K_s:
-                    deck.get_card(player_hand, 1)
-            # Admin commands end
-            elif event.key == PLAY:
+            elif event.key == pygame.K_RETURN:
                 match evaluate_hand(player_hand.selections, discard_pile):
                     case 0:
                         player_hand.start_shake(7, 12)
@@ -536,6 +640,30 @@ while running:
                         player_hand.play_cards(discard_pile)
                     case _:
                         pass
+            # Admin commands start
+            elif admin_commands:
+                # Draw card
+                if event.key == pygame.K_s:
+                    deck.get_card(player_hand, 1)
+                # Draw whole deck
+                elif event.key == pygame.K_a:
+                    deck.get_card(player_hand, len(deck.current))
+                # Pick up discard pile
+                elif event.key == pygame.K_d:
+                    discard_pile.pickup(player_hand)
+                elif event.key == pygame.K_f:
+                    for card in discard_pile.cards:
+                        burn_pile.cards.append(card)
+                    discard_pile.cards = []
+                    discard_pile.rotations = []
+                    discard_pile.rot_cards = []
+                    screen_start_shake(40, 25)
+                elif event.key == pygame.K_g:
+                    for card in player_hand.hand:
+                        burn_pile.cards.append(card)
+                    player_hand.hand = []
+                    screen_start_shake(40, 25)
+            # Admin commands end
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             for button in button_manager.buttons:
                 if button.is_clicked(event.pos):
@@ -552,31 +680,23 @@ while running:
                 if rect.collidepoint(event.pos):
                     card.select(player_hand, offset=50)
                     selected_card = True
-            for card in discard_pile.cards:
-                rect = card.front_surface.get_rect(topleft=(discard_pile.pos[0], discard_pile.pos[1]))
-                if rect.collidepoint(event.pos):
-                    length = len(player_hand.hand)
-                    tick = 0
-                    for card in player_hand.hand:
-                        if evaluate_hand([card], discard_pile) > 0:
-                            discard_pile.start_shake(7, 12)
-                            break
-                        if tick == length - 1:
-                            for card in discard_pile.cards:
-                                card.selected = False
-                                player_hand.hand.append(card)
-                            discard_pile.cards = []
-                            discard_pile.rotations = []
-                            discard_pile.rot_cards = []
-                        tick += 1
+            discard_pile.eval(player_hand, event)
             for card in underhand.cards:
                 card_x, card_y = card.position
                 rect = card.back_surface.get_rect(topleft=(card_x, card_y))
                 if rect.collidepoint(event.pos):
-                    if len(deck.cards) <= 0:
-                        underhand.play_card(card, discard_pile)
+                    if len(deck.cards) <= 0 and len(overhand.cards) <= 0 and len(player_hand.hand) <= 0:
+                        underhand.play_card(card, discard_pile, player_hand)
                     else:
                         underhand.start_card_shake(card, 7, 12)
+            for card in overhand.cards:
+                card_x, card_y = card.position
+                rect = card.front_surface.get_rect(topleft=(card_x, card_y))
+                if rect.collidepoint(event.pos):
+                    if len(deck.cards) <= 0 and len(player_hand.hand) <= 0:
+                        overhand.play_card(card, discard_pile, player_hand)
+                    else:
+                        overhand.start_card_shake(card, 7, 12)
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             for button in button_manager.buttons:
                 button.down = False
@@ -609,6 +729,8 @@ while running:
     button_manager.draw_buttons(game_buffer)
 
     underhand.draw_underhand(game_buffer)
+
+    overhand.draw_overhand(game_buffer)
 
     offset_x, offset_y = 0, 0
     if shake_active:
