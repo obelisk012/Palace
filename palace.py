@@ -219,12 +219,16 @@ class PlayerHand():
             x += spacing
 
     
-    def play_cards(self, discard_pile: DiscardPile):
+    def play_cards(self, anim, discard_pile: DiscardPile):
+        cards = []
+        destins = []
         for card in self.selections:
             if card in self.hand:
                 self.hand.remove(card)
-                discard_pile.cards.append(card)
+                cards.append(card)
+                destins.append(discard_pile.pos)
         self.selections = []
+        anim.start_move(cards, discard_pile, card.idle_pos, discard_pile.pos, 15)
 
 # Card & deck classes
 class Card():
@@ -237,6 +241,8 @@ class Card():
 
         self.strength = self.val
 
+        self.traveling = False
+
         # Hearts = 0, Diamonds = 1, Spades = 2, Clubs = 3
         self.suit = clamp(0, 3, suit)
 
@@ -248,6 +254,9 @@ class Card():
         self.front_surface.blit(image, (0, 0), front_rect)
 
         self.front_surface = pygame.transform.scale(self.front_surface, (144, 192))
+
+        self.idle_pos = (0, 0)
+        self.final_pos = (0, 0)
 
         self.back_surface = card_back
         self.flipped = False
@@ -278,14 +287,18 @@ class Card():
         return 0, 0
 
     def draw_card(self, screen, pos: tuple = (0, 0)):
+        if not self.traveling:
+            self.idle_pos = pos
+
+        x, y = self.idle_pos
+
         if self.selected:
-            pos_list = list(pos)
-            screen.blit(self.front_surface, (pos_list[0], pos_list[1] - self.offset))
-            return
-        if not self.flipped:
-            screen.blit(self.front_surface, pos)
-        else:
+            self.idle_pos = (x, y - self.offset)
+        if self.flipped:
             screen.blit(self.back_surface, pos)
+            return
+        
+        screen.blit(self.front_surface, self.idle_pos)
 
     def get_val_str(self):
         match self.val:
@@ -545,6 +558,52 @@ class Player():
     def turn(self):
         pass
 
+# Anim manager
+class AnimationManager():
+    def __init__(self):
+        self.anim_cards = []
+    
+    def start_move(self, cards: list[Card], destination, start_pos: tuple, end_pos: tuple, duration_frames: int):
+        for card in cards:
+            info = (start_pos, end_pos, duration_frames, card, destination, 0)
+            self.anim_cards.append(info)  # Append the info tuple
+            card.traveling = True
+
+    def update_move(self):
+        to_remove = []  # List to keep track of cards to remove
+        for info in self.anim_cards:
+            start_pos, end_pos, duration_frames, card, destination, tick = info
+            
+            # Debugging output
+            if not hasattr(destination, 'cards'):
+                print(f"Invalid destination: {destination}")
+                continue  # Skip this iteration if destination is invalid
+
+            if tick >= duration_frames:
+                card.idle_pos = end_pos
+                card.traveling = False
+                to_remove.append(info)  # Mark for removal
+                destination.cards.append(card)  # Append to the valid destination
+                continue
+
+            progress = tick / duration_frames
+            new_x = start_pos[0] + (end_pos[0] - start_pos[0]) * progress
+            new_y = start_pos[1] + (end_pos[1] - start_pos[1]) * progress
+            card.idle_pos = (new_x, new_y)
+
+            tick += 1
+            new_info = (start_pos, end_pos, duration_frames, card, destination, tick)
+            self.anim_cards[self.anim_cards.index(info)] = new_info
+
+        # Remove cards that have finished moving
+        for info in to_remove:
+            self.anim_cards.remove(info)
+
+    def draw_cards(self, screen):
+        for info in self.anim_cards:
+            _, _, _, card, _, _ = info
+            card.draw_card(screen)          
+        
 def evaluate_hand(hand: list[Card], discard: DiscardPile) -> int:
     """
     0 - invalid play
@@ -611,6 +670,8 @@ button_manager = ButtonManager()
 discard_pile = DiscardPile((600, 350))
 burn_pile = BurnPile((150, 350))
 
+anim_manager = AnimationManager()
+
 mouse_down = False
 
 shake_active = False
@@ -634,7 +695,7 @@ while running:
             running = False
         if event.type == pygame.KEYDOWN:
             keys = pygame.key.get_pressed()
-            if keys[pygame.K_LSHIFT] and keys[pygame.K_RSHIFT]:
+            if keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]:
                 admin_commands = not admin_commands
             if event.key == pygame.K_ESCAPE:
                 running = False
@@ -643,11 +704,11 @@ while running:
                     case 0:
                         player1.hand.start_shake(7, 12)
                     case 1:
-                        player1.hand.play_cards(discard_pile)
+                        player1.hand.play_cards(anim_manager, discard_pile)
                     case 2:
-                        player1.hand.play_cards(discard_pile)
+                        player1.hand.play_cards(anim_manager, discard_pile)
                     case 3:
-                        player1.hand.play_cards(discard_pile)
+                        player1.hand.play_cards(anim_manager, discard_pile)
                         for card in discard_pile.cards:
                             burn_pile.cards.append(card)
                         discard_pile.cards = []
@@ -658,7 +719,7 @@ while running:
                         strength = discard_pile.cards[-1].strength if discard_pile.cards else 0
                         for card in player1.hand.selections:
                             card.strength = strength
-                        player1.hand.play_cards(discard_pile)
+                        player1.hand.play_cards(anim_manager, discard_pile)
                     case _:
                         pass
             # Admin commands start
@@ -722,6 +783,8 @@ while running:
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             for button in button_manager.buttons:
                 button.down = False
+    
+    anim_manager.update_move()
 
     try:
         if len(player1.hand.hand) < player1.hand.min_hand_size:
@@ -749,6 +812,8 @@ while running:
     burn_pile.draw_pile(game_buffer)
 
     button_manager.draw_buttons(game_buffer)
+
+    anim_manager.draw_cards(game_buffer)
 
     offset_x, offset_y = 0, 0
     if shake_active:
