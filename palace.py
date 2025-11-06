@@ -462,7 +462,7 @@ class UnderHand():
         card.shake_duration = duration_frames
         card.shake_intensity = intensity
 
-    def play_card(self, card, discard_pile: DiscardPile, player_hand: PlayerHand):
+    def play_card(self, card, discard_pile: DiscardPile, player_hand: PlayerHand, anim_manager):
         if card in self.cards:
             match evaluate_hand([card], discard_pile):
                 case 0:
@@ -478,8 +478,7 @@ class UnderHand():
                 case 3:
                     self.cards.remove(card)
                     discard_pile.cards.append(card)
-                    for card in discard_pile.cards:
-                        burn_pile.cards.append(card)
+                    anim_manager.start_move(discard_pile.cards, burn_pile, discard_pile.pos, burn_pile.pos, 13)
                     discard_pile.cards = []
                     discard_pile.rotations = []
                     discard_pile.rot_cards = []
@@ -520,7 +519,7 @@ class OverHand():
         card.shake_duration = duration_frames
         card.shake_intensity = intensity
 
-    def play_card(self, card, discard_pile: DiscardPile, player_hand: PlayerHand):
+    def play_card(self, card, discard_pile: DiscardPile, player_hand: PlayerHand, anim_manager):
         if card in self.cards:
             match evaluate_hand([card], discard_pile):
                 case 0:
@@ -536,8 +535,7 @@ class OverHand():
                 case 3:
                     self.cards.remove(card)
                     discard_pile.cards.append(card)
-                    for card in discard_pile.cards:
-                        burn_pile.cards.append(card)
+                    anim_manager.start_move(discard_pile.cards, burn_pile, discard_pile.pos, burn_pile.pos, 13)
                     discard_pile.cards = []
                     discard_pile.rotations = []
                     discard_pile.rot_cards = []
@@ -546,7 +544,7 @@ class OverHand():
                     self.cards.remove(card)
                     discard_pile.cards.append(card)
                     strength = discard_pile.cards[-1].strength if discard_pile.cards else 8
-                    card.strength = strength   
+                    card.strength = strength  
 
 class Player():
     def __init__(self, deck: Deck, name: str = 'Player', start: bool = True):
@@ -702,8 +700,7 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         if event.type == pygame.KEYDOWN:
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]:
+            if event.key == pygame.K_LSHIFT:
                 admin_commands = not admin_commands
             if event.key == pygame.K_ESCAPE:
                 running = False
@@ -772,7 +769,7 @@ while running:
                 rect = card.back_surface.get_rect(topleft=(card_x, card_y))
                 if rect.collidepoint(event.pos):
                     if len(deck.cards) <= 0 and len(player1.overhand.cards) <= 0 and len(player1.hand.cards) <= 0:
-                        player1.underhand.play_card(card, discard_pile, player1.hand)
+                        player1.underhand.play_card(card, discard_pile, player1.hand, anim_manager)
                     else:
                         player1.underhand.start_card_shake(card, 7, 12)
             for card in player1.overhand.cards:
@@ -780,7 +777,7 @@ while running:
                 rect = card.front_surface.get_rect(topleft=(card_x, card_y))
                 if rect.collidepoint(event.pos):
                     if len(deck.cards) <= 0 and len(player1.hand.cards) <= 0:
-                        player1.overhand.play_card(card, discard_pile, player1.hand)
+                        player1.overhand.play_card(card, discard_pile, player1.hand, anim_manager)
                     else:
                         player1.overhand.start_card_shake(card, 7, 12)
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
@@ -788,8 +785,7 @@ while running:
                 button.down = False
 
     if discard_pile.cards and discard_pile.cards[-1].val == 9 or len(discard_pile.cards) >= 4 and discard_pile.cards[-1].val == discard_pile.cards[-2].val == discard_pile.cards[-3].val == discard_pile.cards[-4].val:
-        for card in discard_pile.cards:
-            burn_pile.cards.append(card)
+        anim_manager.start_move(discard_pile.cards, burn_pile, discard_pile.pos, burn_pile.pos, 13)
         discard_pile.cards = []
         discard_pile.rotations = []
         discard_pile.rot_cards = []
@@ -803,15 +799,6 @@ while running:
             anim_manager.start_move(deck.get_card(player1.hand, 1), player1.hand, deck.anchor, (px + 144, py), 13)
     except IndexError:
         pass
-    
-    if len(discard_pile.cards) >= 4:
-        if discard_pile.cards[-1].val == discard_pile.cards[-2].val == discard_pile.cards[-3].val == discard_pile.cards[-4].val:
-            for card in discard_pile.cards:
-                burn_pile.cards.append(card)
-            discard_pile.cards = []
-            discard_pile.rotations = []
-            discard_pile.rot_cards = []
-            screen_start_shake(40, 25)
 
     game_buffer.fill(WHITE)
 
