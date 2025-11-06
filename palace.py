@@ -8,6 +8,11 @@ FPS = 60
 # Codes
 PLAY = pygame.K_RETURN
 
+# Destroy Pile
+class DestroyPile():
+    def __init__(self):
+        self.cards = []
+
 # Burn Pile
 class BurnPile():
     def __init__(self, pos: tuple = (0, 0)):
@@ -481,25 +486,24 @@ class UnderHand():
         card.shake_duration = duration_frames
         card.shake_intensity = intensity
 
-    def play_card(self, card, discard_pile: DiscardPile, player_hand: PlayerHand, anim_manager):
+    def play_card(self, card, discard_pile: DiscardPile, player_hand: PlayerHand, anim_manager, destroy_pile: DestroyPile):
         if card in self.cards:
-            anim_manager.start_move(card, discard_pile, card.idle_pos, discard_pile.pos, 13)
             match evaluate_hand([card], discard_pile):
                 case 0:
                     self.cards.remove(card)
-                    anim_manager.start_move(card, discard_pile, self.pos, discard_pile.pos, 13)        
+                    anim_manager.start_move(card, destroy_pile, card.idle_pos, discard_pile.pos, 13)
+                    player_hand.cards.append(card)
                 case 1:
                     self.cards.remove(card)
-                    anim_manager.start_move(card, discard_pile, self.pos, discard_pile.pos, 13)
+                    anim_manager.start_move(card, discard_pile, card.idle_pos, discard_pile.pos, 13)
                 case 2:
                     self.cards.remove(card)
-                    anim_manager.start_move(card, discard_pile, self.pos, discard_pile.pos, 13)
+                    anim_manager.start_move(card, discard_pile, card.idle_pos, discard_pile.pos, 13)
                 case 3:
                     self.cards.remove(card)
-                    anim_manager.start_move(discard_pile.cards, burn_pile, discard_pile.pos, burn_pile.pos, 13)
+                    anim_manager.start_move(card, discard_pile, card.idle_pos, discard_pile.pos, 13)
                 case 5:
                     self.cards.remove(card)
-                    discard_pile.cards.append(card)
                     strength = discard_pile.cards[-1].strength if discard_pile.cards else 8
                     card.strength = strength         
 
@@ -533,25 +537,24 @@ class OverHand():
         card.shake_duration = duration_frames
         card.shake_intensity = intensity
 
-    def play_card(self, card, discard_pile: DiscardPile, player_hand: PlayerHand, anim_manager):
+    def play_card(self, card, discard_pile: DiscardPile, player_hand: PlayerHand, anim_manager, destroy_pile: DestroyPile):
         if card in self.cards:
-            anim_manager.start_move(card, discard_pile, card.idle_pos, discard_pile.pos, 13)
             match evaluate_hand([card], discard_pile):
                 case 0:
                     self.cards.remove(card)
-                    anim_manager.start_move(card, discard_pile, self.pos, discard_pile.pos, 13)        
+                    anim_manager.start_move(card, destroy_pile, card.idle_pos, discard_pile.pos, 13)
+                    player_hand.cards.append(card)
                 case 1:
                     self.cards.remove(card)
-                    anim_manager.start_move(card, discard_pile, self.pos, discard_pile.pos, 13)
+                    anim_manager.start_move(card, discard_pile, card.idle_pos, discard_pile.pos, 13)
                 case 2:
                     self.cards.remove(card)
-                    anim_manager.start_move(card, discard_pile, self.pos, discard_pile.pos, 13)
+                    anim_manager.start_move(card, discard_pile, card.idle_pos, discard_pile.pos, 13)
                 case 3:
                     self.cards.remove(card)
-                    anim_manager.start_move(discard_pile.cards, burn_pile, discard_pile.pos, burn_pile.pos, 13)
+                    anim_manager.start_move(card, discard_pile, card.idle_pos, discard_pile.pos, 13)
                 case 5:
                     self.cards.remove(card)
-                    discard_pile.cards.append(card)
                     strength = discard_pile.cards[-1].strength if discard_pile.cards else 8
                     card.strength = strength   
 
@@ -624,7 +627,7 @@ class AnimationManager():
     def draw_cards(self, screen):
         for info in self.anim_cards:
             _, _, _, card, _, _ = info
-            card.draw_card(screen, card.idle_pos, deck)          
+            card.draw_card(screen, card.idle_pos, deck)       
         
 def evaluate_hand(hand: list[Card], discard: DiscardPile) -> int:
     """
@@ -687,6 +690,8 @@ underhand = UnderHand(deck, (950, 725))
 overhand = OverHand(deck, (955, 710))
 player1 = Player(deck, 'player1', True)
 flipped = False
+
+destroy_pile = DestroyPile()
 
 button_manager = ButtonManager()
 discard_pile = DiscardPile((600, 350))
@@ -785,7 +790,7 @@ while running:
                 rect = card.back_surface.get_rect(topleft=(card_x, card_y))
                 if rect.collidepoint(event.pos):
                     if len(deck.cards) <= 0 and len(player1.overhand.cards) <= 0 and len(player1.hand.cards) <= 0:
-                        player1.underhand.play_card(card, discard_pile, player1.hand, anim_manager)
+                        player1.underhand.play_card(card, discard_pile, player1.hand, anim_manager, destroy_pile)
                     else:
                         player1.underhand.start_card_shake(card, 7, 12)
             for card in player1.overhand.cards:
@@ -793,7 +798,7 @@ while running:
                 rect = card.front_surface.get_rect(topleft=(card_x, card_y))
                 if rect.collidepoint(event.pos):
                     if len(deck.cards) <= 0 and len(player1.hand.cards) <= 0:
-                        player1.overhand.play_card(card, discard_pile, player1.hand, anim_manager)
+                        player1.overhand.play_card(card, discard_pile, player1.hand, anim_manager, destroy_pile)
                     else:
                         player1.overhand.start_card_shake(card, 7, 12)
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
