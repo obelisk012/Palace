@@ -17,17 +17,24 @@ class BurnPile():
         self.pos = pos
 
     def draw_pile(self, screen):
-        index = 0
+        if not self.cards:
+            return
+
         x, y = self.pos
 
-        for card in self.cards:
+        while len(self.rotations) < len(self.cards):
+            card = self.cards[len(self.rotations)]
             surface = pygame.transform.rotate(card.front_surface, random.randrange(-25, 25))
-            if card not in self.rot_cards:
-                self.rotations.append(surface)
-                self.rot_cards.append(card)
-            blit_surface= self.rotations[self.cards.index(card)]
-            screen.blit(blit_surface, (x + int(index/3), y - index))
-            index += 0.1
+            self.rotations.append(surface)
+            self.rot_cards.append(card)
+
+        if len(self.rotations) > len(self.cards):
+            self.rotations = self.rotations[:len(self.cards)]
+            self.rot_cards = self.rot_cards[:len(self.cards)]
+
+        for i, card in enumerate(self.cards):
+            blit_surface = self.rotations[i]
+            screen.blit(blit_surface, (x + int(i / 3), y - i * 0.1))
 
 # Discard Pile
 class DiscardPile():
@@ -86,8 +93,8 @@ class DiscardPile():
             return
 
         x, y = self.pos
-
         offset_x, offset_y = 0, 0
+
         if self.shake_active and self.shake_duration > 0:
             offset_x = random.randint(-self.shake_intensity, self.shake_intensity)
             offset_y = random.randint(-self.shake_intensity, self.shake_intensity)
@@ -95,15 +102,19 @@ class DiscardPile():
             if self.shake_duration <= 0:
                 self.shake_active = False
 
-        index = 0
-        for card in self.cards:
-            if card not in self.rot_cards:
-                surface = pygame.transform.rotate(card.front_surface, random.randrange(-5, 5))
-                self.rotations.append(surface)
-                self.rot_cards.append(card)
-            blit_surface = self.rotations[self.cards.index(card)]
-            screen.blit(blit_surface, (x + offset_x + int(index/3), y + offset_y - index))
-            index += 0.1
+        while len(self.rotations) < len(self.cards):
+            card = self.cards[len(self.rotations)]
+            surface = pygame.transform.rotate(card.front_surface, random.randrange(-5, 5))
+            self.rotations.append(surface)
+            self.rot_cards.append(card)
+
+        if len(self.rotations) > len(self.cards):
+            self.rotations = self.rotations[:len(self.cards)]
+            self.rot_cards = self.rot_cards[:len(self.cards)]
+
+        for i, card in enumerate(self.cards):
+            blit_surface = self.rotations[i]
+            screen.blit(blit_surface, (x + offset_x + int(i / 3), y + offset_y - i * 0.1))
 
 # Buttons
 class Button():
@@ -472,25 +483,20 @@ class UnderHand():
 
     def play_card(self, card, discard_pile: DiscardPile, player_hand: PlayerHand, anim_manager):
         if card in self.cards:
+            anim_manager.start_move(card, discard_pile, card.idle_pos, discard_pile.pos, 13)
             match evaluate_hand([card], discard_pile):
                 case 0:
                     self.cards.remove(card)
-                    discard_pile.cards.append(card)
-                    discard_pile.pickup(player_hand)         
+                    anim_manager.start_move(card, discard_pile, self.pos, discard_pile.pos, 13)        
                 case 1:
                     self.cards.remove(card)
-                    discard_pile.cards.append(card)
+                    anim_manager.start_move(card, discard_pile, self.pos, discard_pile.pos, 13)
                 case 2:
                     self.cards.remove(card)
-                    discard_pile.cards.append(card)
+                    anim_manager.start_move(card, discard_pile, self.pos, discard_pile.pos, 13)
                 case 3:
                     self.cards.remove(card)
-                    discard_pile.cards.append(card)
                     anim_manager.start_move(discard_pile.cards, burn_pile, discard_pile.pos, burn_pile.pos, 13)
-                    discard_pile.cards = []
-                    discard_pile.rotations = []
-                    discard_pile.rot_cards = []
-                    screen_start_shake(40, 25)
                 case 5:
                     self.cards.remove(card)
                     discard_pile.cards.append(card)
@@ -529,30 +535,25 @@ class OverHand():
 
     def play_card(self, card, discard_pile: DiscardPile, player_hand: PlayerHand, anim_manager):
         if card in self.cards:
+            anim_manager.start_move(card, discard_pile, card.idle_pos, discard_pile.pos, 13)
             match evaluate_hand([card], discard_pile):
                 case 0:
                     self.cards.remove(card)
-                    discard_pile.cards.append(card)
-                    discard_pile.pickup(player_hand)         
+                    anim_manager.start_move(card, discard_pile, self.pos, discard_pile.pos, 13)        
                 case 1:
                     self.cards.remove(card)
-                    discard_pile.cards.append(card)
+                    anim_manager.start_move(card, discard_pile, self.pos, discard_pile.pos, 13)
                 case 2:
                     self.cards.remove(card)
-                    discard_pile.cards.append(card)
+                    anim_manager.start_move(card, discard_pile, self.pos, discard_pile.pos, 13)
                 case 3:
                     self.cards.remove(card)
-                    discard_pile.cards.append(card)
                     anim_manager.start_move(discard_pile.cards, burn_pile, discard_pile.pos, burn_pile.pos, 13)
-                    discard_pile.cards = []
-                    discard_pile.rotations = []
-                    discard_pile.rot_cards = []
-                    screen_start_shake(40, 25)
                 case 5:
                     self.cards.remove(card)
                     discard_pile.cards.append(card)
                     strength = discard_pile.cards[-1].strength if discard_pile.cards else 8
-                    card.strength = strength  
+                    card.strength = strength   
 
 class Player():
     def __init__(self, deck: Deck, name: str = 'Player', start: bool = True):
@@ -577,6 +578,13 @@ class AnimationManager():
         self.anim_cards = []
     
     def start_move(self, cards: list[Card], destination, start_pos: tuple, end_pos: tuple, duration_frames: int, task: str = 'move'):
+        if isinstance(cards, Card):
+            card = cards
+            card.idle_pos = start_pos
+            info = (start_pos, end_pos, duration_frames, card, destination, 0)
+            self.anim_cards.append(info)
+            card.traveling = True
+            return
         for card in cards:
             card.idle_pos = start_pos
             info = (start_pos, end_pos, duration_frames, card, destination, 0)
