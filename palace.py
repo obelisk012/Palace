@@ -46,7 +46,8 @@ class DiscardPile():
         self.shake_duration = duration_frames
         self.shake_intensity = intensity
 
-    def eval(self, player_hand, event):
+    def eval(self, player_hand, event, anim_manager):
+        cards = []
         for card in self.cards:
                 rect = card.front_surface.get_rect(topleft=(self.pos[0], self.pos[1]))
                 if rect.collidepoint(event.pos):
@@ -58,17 +59,24 @@ class DiscardPile():
                             break
                         if tick == length - 1:
                             for card in self.cards:
+                                card.flipped = False
                                 card.selected = False
-                                player_hand.cards.append(card)
+                                cards.append(card)
+                            x, y = player_hand.anchor
+                            anim_manager.start_move(cards, player_hand, self.pos, (x + 144, y), 13)
                             self.cards = []
                             self.rotations = []
                             self.rot_cards = []
                         tick += 1
 
     def pickup(self, player_hand):
+        cards = []
         for card in self.cards:
+            card.flipped = False
             card.selected = False
-            player_hand.cards.append(card)
+            cards.append(card)
+        x, y = player_hand.anchor
+        anim_manager.start_move(cards, player_hand, self.pos, (x + 144, y), 13)
         self.cards = []
         self.rotations = []
         self.rot_cards = []
@@ -763,7 +771,7 @@ while running:
                 if rect.collidepoint(event.pos):
                     card.select(player1.hand, offset=50)
                     selected_card = True
-            discard_pile.eval(player1.hand, event)
+            discard_pile.eval(player1.hand, event, anim_manager)
             for card in player1.underhand.cards:
                 card_x, card_y = card.position
                 rect = card.back_surface.get_rect(topleft=(card_x, card_y))
