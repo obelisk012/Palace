@@ -830,6 +830,8 @@ while running:
         if len(discard_pile.cards) >= 2:
             if discard_pile.cards[-1].val < discard_pile.cards[-2].val and discard_pile.cards[-1].val not in POWER_LIST:
                 discard_pile.pickup(player1.hand)
+            elif discard_pile.cards[-1].val > discard_pile.cards[-2].val and discard_pile.cards[-1].val not in POWER_LIST and discard_pile.cards[-2].val == 6:
+                discard_pile.pickup(player1.hand)
 
     game_buffer.fill(WHITE)
 
