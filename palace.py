@@ -9,6 +9,8 @@ FPS = 60
 # Codes
 PLAY = pygame.K_RETURN
 
+POWER_LIST = [1, 6, 7, 9]
+
 # Destroy Pile
 class DestroyPile():
     def __init__(self):
@@ -492,8 +494,7 @@ class UnderHand():
             match evaluate_hand([card], discard_pile):
                 case 0:
                     self.cards.remove(card)
-                    anim_manager.start_move(card, destroy_pile, card.idle_pos, discard_pile.pos, 13)
-                    player_hand.cards.append(card)
+                    anim_manager.start_move(card, discard_pile, card.idle_pos, discard_pile.pos, 13)
                 case 1:
                     self.cards.remove(card)
                     anim_manager.start_move(card, discard_pile, card.idle_pos, discard_pile.pos, 13)
@@ -543,8 +544,7 @@ class OverHand():
             match evaluate_hand([card], discard_pile):
                 case 0:
                     self.cards.remove(card)
-                    anim_manager.start_move(card, destroy_pile, card.idle_pos, discard_pile.pos, 13)
-                    player_hand.cards.append(card)
+                    anim_manager.start_move(card, discard_pile, card.idle_pos, discard_pile.pos, 13)
                 case 1:
                     self.cards.remove(card)
                     anim_manager.start_move(card, discard_pile, card.idle_pos, discard_pile.pos, 13)
@@ -744,31 +744,35 @@ while running:
                     case _:
                         pass
             # Admin commands start
-            '''
             elif admin_commands:
                 # Draw card
                 if event.key == pygame.K_s:
-                    deck.get_card(player_hand, 1)
+                    x, y = player1.hand.anchor
+                    anim_manager.start_move(deck.get_card(player_hand, 1), player1.hand, deck.anchor, (x + 144, y), 13)
                 # Draw whole deck
                 elif event.key == pygame.K_a:
-                    deck.get_card(player_hand, len(deck.current))
+                    x, y = player1.hand.anchor
+                    anim_manager.start_move(deck.get_card(player_hand, len(deck.current)), player1.hand, deck.anchor, (x + 144, y), 13)
                 # Pick up discard pile
                 elif event.key == pygame.K_d:
                     discard_pile.pickup(player_hand)
                 elif event.key == pygame.K_f:
+                    cards = []
                     for card in discard_pile.cards:
-                        burn_pile.cards.append(card)
+                        cards.append(card)
+                    anim_manager.start_move(cards, burn_pile, discard_pile.pos, burn_pile.pos, 13)
                     discard_pile.cards = []
                     discard_pile.rotations = []
                     discard_pile.rot_cards = []
                     screen_start_shake(40, 25)
                 elif event.key == pygame.K_g:
-                    for card in player_hand.cards:
-                        burn_pile.cards.append(card)
-                    player_hand.cards = []
+                    cards = []
+                    for card in player1.hand.cards:
+                        cards.append(card)
+                    anim_manager.start_move(cards, burn_pile, player1.hand.anchor, burn_pile.pos, 13)
+                    player1.hand.cards = []
                     screen_start_shake(40, 25)
             # Admin commands end
-            '''
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             for button in button_manager.buttons:
                 if button.is_clicked(event.pos):
@@ -821,6 +825,11 @@ while running:
             anim_manager.start_move(deck.get_card(player1.hand, 1), player1.hand, deck.anchor, (px + 144, py), 13)
     except IndexError:
         pass
+    
+    if len(deck.cards) == 0:
+        if len(discard_pile.cards) >= 2:
+            if discard_pile.cards[-1].val < discard_pile.cards[-2].val and discard_pile.cards[-1].val not in POWER_LIST:
+                discard_pile.pickup(player1.hand)
 
     game_buffer.fill(WHITE)
 
