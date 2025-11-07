@@ -1,6 +1,5 @@
 import pygame
 import random
-import asyncio
 
 pygame.init()
 
@@ -507,7 +506,8 @@ class UnderHand():
                 case 5:
                     self.cards.remove(card)
                     strength = discard_pile.cards[-1].strength if discard_pile.cards else 8
-                    card.strength = strength         
+                    card.strength = strength
+                    anim_manager.start_move(card, discard_pile, card.idle_pos, discard_pile.pos, 13)         
 
 class OverHand():
     def __init__(self, deck: Deck, pos: tuple = (0, 0)):
