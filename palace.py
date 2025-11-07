@@ -6,7 +6,7 @@ pygame.init()
 FPS = 60
 
 # Codes
-PLAY = pygame.K_SPACE
+PLAY = pygame.K_RETURN
 
 POWER_LIST = [1, 6, 7, 9]
 
