@@ -6,7 +6,7 @@ pygame.init()
 FPS = 60
 
 # Codes
-PLAY = pygame.K_RETURN
+PLAY = pygame.K_SPACE
 
 POWER_LIST = [1, 6, 7, 9]
 
@@ -726,7 +726,7 @@ while running:
                 admin_commands = not admin_commands
             if event.key == pygame.K_ESCAPE:
                 running = False
-            elif event.key == pygame.K_RETURN:
+            elif event.key == PLAY:
                 match evaluate_hand(player1.hand.selections, discard_pile):
                     case 0:
                         player1.hand.start_shake(7, 12)
